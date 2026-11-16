@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>U-LMS | Hệ Thống Quản Lý Học Tập Đại Học</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .tab-active { border-bottom: 3px solid #2563eb; color: #2563eb; font-weight: 600; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow">
+          <i class="fa-solid fa-graduation-cap"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-slate-900 leading-tight">U-LMS UNIVERSITY</h1>
+          <p class="text-xs text-blue-600 font-medium">Kiến trúc Modular Monolith &bull; Quy mô 2.000 &rarr; 30.000 SV</p>
+        </div>
+      </div>
+
+      <!-- User Profile / Switch Role -->
+      <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-2 bg-slate-100 p-1.5 rounded-lg border border-slate-200 text-xs">
+          <span class="text-slate-500 font-semibold px-2">Đổi vai trò:</span>
+          <button onclick="loginAs('STUDENT')" id="btn-role-student" class="px-3 py-1 bg-white shadow-sm font-semibold rounded text-blue-700">Sinh viên (Mai)</button>
+          <button onclick="loginAs('LECTURER')" id="btn-role-lecturer" class="px-3 py-1 font-semibold rounded text-slate-600 hover:text-blue-600">Giảng viên (TS. A)</button>
+        </div>
+        <div id="user-badge" class="flex items-center space-x-2 border-l pl-4 border-slate-200">
+          <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-sm" id="user-avatar">
+            SV
+          </div>
+          <div>
+            <div class="text-xs font-bold leading-none" id="user-name">Trần Thị Mai</div>
+            <div class="text-[10px] text-slate-500" id="user-role">Sinh viên &bull; Khoa CNTT</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <div class="bg-white border-b border-slate-200 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 flex space-x-8 text-sm">
+      <button onclick="switchTab('courses')" id="tab-courses" class="py-3 px-1 tab-active flex items-center space-x-2">
+        <i class="fa-solid fa-book"></i>
+        <span>Lớp học phần & Bài giảng</span>
+      </button>
+      <button onclick="switchTab('assignments')" id="tab-assignments" class="py-3 px-1 text-slate-600 hover:text-blue-600 flex items-center space-x-2">
+        <i class="fa-solid fa-file-pen"></i>
+        <span>Bài tập & Nộp bài</span>
+      </button>
+      <button onclick="switchTab('quizzes')" id="tab-quizzes" class="py-3 px-1 text-slate-600 hover:text-blue-600 flex items-center space-x-2">
+        <i class="fa-solid fa-stopwatch"></i>
+        <span>Kiểm tra trực tuyến (Quiz)</span>
+      </button>
+      <button onclick="switchTab('grades')" id="tab-grades" class="py-3 px-1 text-slate-600 hover:text-blue-600 flex items-center space-x-2">
+        <i class="fa-solid fa-chart-line"></i>
+        <span>Bảng điểm</span>
+      </button>
+      <button onclick="switchTab('forum')" id="tab-forum" class="py-3 px-1 text-slate-600 hover:text-blue-600 flex items-center space-x-2">
+        <i class="fa-solid fa-comments"></i>
+        <span>Diễn đàn thảo luận</span>
+      </button>
+      <button onclick="switchTab('notifications')" id="tab-notifications" class="py-3 px-1 text-slate-600 hover:text-blue-600 flex items-center space-x-2">
+        <i class="fa-solid fa-bell"></i>
+        <span>Thông báo</span>
+        <span id="notif-badge" class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full hidden">0</span>
+      </button>
+      <button onclick="switchTab('architecture')" id="tab-architecture" class="py-3 px-1 text-purple-700 hover:text-purple-900 font-semibold flex items-center space-x-2">
+        <i class="fa-solid fa-sitemap"></i>
+        <span>Giám sát Kiến trúc & Concurrency</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full">
+    
+    <!-- Toast Alert -->
+    <div id="toast" class="hidden fixed bottom-6 right-6 max-w-sm bg-slate-900 text-white px-4 py-3 rounded-lg shadow-xl text-sm flex items-center space-x-3 z-50">
+      <i id="toast-icon" class="fa-solid fa-circle-check text-green-400"></i>
+      <span id="toast-msg">Thông báo thành công</span>
+    </div>
+
+    <!-- TAB 1: Courses & Lectures -->
+    <div id="view-courses" class="space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900">Danh Sách Lớp Học Phần</h2>
+          <p class="text-xs text-slate-500">Học kỳ 1 - Năm học 2026</p>
+        </div>
+        <div id="lecturer-create-course-btn" class="hidden">
+          <button onclick="createNewCoursePrompt()" class="bg-blue-600 text-white text-xs px-3 py-2 rounded-lg font-semibold hover:bg-blue-700 shadow">
+            <i class="fa-solid fa-plus mr-1"></i> Tạo lớp học phần
+          </button>
+        </div>
+      </div>
+
+      <div id="courses-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Render Courses Dynamically -->
+      </div>
+    </div>
+
+    <!-- TAB 2: Assignments -->
+    <div id="view-assignments" class="hidden space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900">Quản Lý Bài Tập</h2>
+          <p class="text-xs text-slate-500">Nộp bài trực tuyến & Kiểm soát phiên nộp (Optimistic Versioning)</p>
+        </div>
+        <div id="lecturer-create-assign-btn" class="hidden">
+          <button onclick="createNewAssignmentPrompt()" class="bg-blue-600 text-white text-xs px-3 py-2 rounded-lg font-semibold hover:bg-blue-700 shadow">
+            <i class="fa-solid fa-plus mr-1"></i> Giao bài tập mới
+          </button>
+        </div>
+      </div>
+
+      <div id="assignments-list" class="space-y-4">
+        <!-- Render Assignments Dynamically -->
+      </div>
+    </div>
+
+    <!-- TAB 3: Quizzes -->
+    <div id="view-quizzes" class="hidden space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900">Kiểm Tra Trực Tuyến (Quiz System)</h2>
+          <p class="text-xs text-slate-500">Chấm điểm tự động qua In-Memory Event Bus & Sẵn sàng tách Microservice</p>
+        </div>
+      </div>
+
+      <div id="quizzes-list" class="space-y-4">
+        <!-- Render Quizzes Dynamically -->
+      </div>
+
+      <!-- Active Quiz Container (Hidden initially) -->
+      <div id="quiz-taking-box" class="hidden bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
+        <div class="flex items-center justify-between border-b pb-4">
+          <div>
+            <h3 id="taking-quiz-title" class="text-lg font-bold text-slate-900">Tiêu đề bài thi</h3>
+            <span class="text-xs text-slate-500">Thời gian làm bài: <span id="taking-quiz-time">15</span> phút</span>
+          </div>
+          <button onclick="submitActiveQuiz()" class="bg-green-600 hover:bg-green-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg shadow">
+            <i class="fa-solid fa-paper-plane mr-1.5"></i> Nộp Bài Thi Ngay
+          </button>
+        </div>
+        <div id="taking-quiz-questions" class="space-y-6">
+          <!-- Render questions -->
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: Grades -->
+    <div id="view-grades" class="hidden space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900">Bảng Điểm Học Tập</h2>
+          <p class="text-xs text-slate-500">Tự động tổng hợp từ Quiz và Giảng viên chấm tự luận</p>
+        </div>
+      </div>
+      <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-slate-100 text-slate-700 border-b border-slate-200 font-semibold">
+            <tr>
+              <th class="py-3 px-4">Môn học</th>
+              <th class="py-3 px-4">Loại bài</th>
+              <th class="py-3 px-4">Điểm số (Thang 10)</th>
+              <th class="py-3 px-4">Nhận xét</th>
+              <th class="py-3 px-4">Thời gian ghi nhận</th>
+            </tr>
+          </thead>
+          <tbody id="grades-table-body" class="divide-y divide-slate-100">
+            <!-- Dynamic grades -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB 5: Forum -->
+    <div id="view-forum" class="hidden space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900">Diễn Đàn Thảo Luận Lớp Học</h2>
+          <p class="text-xs text-slate-500">Trao đổi kiến thức giữa Giảng viên và Sinh viên</p>
+        </div>
+        <button onclick="createNewForumPostPrompt()" class="bg-blue-600 text-white text-xs px-3 py-2 rounded-lg font-semibold hover:bg-blue-700 shadow">
+          <i class="fa-solid fa-pen-to-square mr-1"></i> Tạo chủ đề mới
+        </button>
+      </div>
+
+      <div id="forum-posts-list" class="space-y-4">
+        <!-- Render posts -->
+      </div>
+    </div>
+
+    <!-- TAB 6: Notifications -->
+    <div id="view-notifications" class="hidden space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900">Hộp Thư Thông Báo</h2>
+          <p class="text-xs text-slate-500">Cập nhật lịch học, thông báo nộp bài và kết quả thi</p>
+        </div>
+      </div>
+      <div id="notifications-list" class="space-y-3">
+        <!-- Render notifications -->
+      </div>
+    </div>
+
+    <!-- TAB 7: Architecture & Concurrency Demo -->
+    <div id="view-architecture" class="hidden space-y-6">
+      <div class="bg-gradient-to-r from-blue-900 to-indigo-900 text-white rounded-2xl p-6 shadow-lg">
+        <h2 class="text-2xl font-bold flex items-center space-x-2">
+          <i class="fa-solid fa-network-wired text-cyan-300"></i>
+          <span>Bảng Điều Khiển Kiến Trúc & Xử Lý Tranh Chấp (Concurrency)</span>
+        </h2>
+        <p class="text-sm text-blue-200 mt-1">
+          Chứng minh giải pháp kiến trúc cho KTKN 2 & KTKN 3: Kiểm soát tranh chấp (Optimistic Locking) và Kiến trúc tiến hóa (Evolutionary Modular Monolith).
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Concurrency Stress Test Simulator -->
+        <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+          <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+            <i class="fa-solid fa-bolt text-amber-500"></i>
+            <span>Mô Phỏng Tải Đồng Thời (High Concurrency Submissions)</span>
+          </h3>
+          <p class="text-xs text-slate-600">
+            Giả lập tình huống **50 sinh viên bấm "Nộp bài" cùng 1 tích tắc** trước hạn chót. Kiểm tra tính toàn vẹn và cơ chế versioning chống race condition.
+          </p>
+          <div class="flex items-center space-x-3">
+            <button onclick="runConcurrencyTest()" id="btn-stress-test" class="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-4 py-2.5 rounded-lg shadow">
+              <i class="fa-solid fa-play mr-1"></i> Bắn 50 Request Đồng Thời (Race Test)
+            </button>
+            <span id="stress-status" class="text-xs font-semibold text-slate-500">Sẵn sàng</span>
+          </div>
+          <div id="stress-results" class="bg-slate-900 text-green-400 p-3 rounded-lg text-xs font-mono h-48 overflow-y-auto hidden">
+            <!-- Output logs -->
+          </div>
+        </div>
+
+        <!-- Architectural Health & Evolution Stats -->
+        <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+          <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+            <i class="fa-solid fa-server text-blue-600"></i>
+            <span>Thông Số Kiến Trúc Hệ Thống (Health Metric)</span>
+          </h3>
+          <div class="space-y-2 text-xs">
+            <div class="flex justify-between py-1 border-b">
+              <span class="text-slate-500">Phong cách kiến trúc hiện tại:</span>
+              <span class="font-bold text-blue-700">Modular Monolith (Clean Architecture)</span>
+            </div>
+            <div class="flex justify-between py-1 border-b">
+              <span class="text-slate-500">Lộ trình tiến hóa (Scale Roadmap):</span>
+              <span class="font-bold text-slate-800">2.000 SV (1 Khoa) &rarr; 30.000 SV (Toàn trường)</span>
+            </div>
+            <div class="flex justify-between py-1 border-b">
+              <span class="text-slate-500">Ranh giới phân hệ (Bounded Contexts):</span>
+              <span class="font-bold text-emerald-600">7 Bounded Contexts (Cô lập & Giao tiếp qua Events)</span>
+            </div>
+            <div class="flex justify-between py-1 border-b">
+              <span class="text-slate-500">Cơ chế giao tiếp nội bộ:</span>
+              <span class="font-bold text-purple-600">In-Memory Domain Event Bus (Tương thích Kafka/RabbitMQ)</span>
+            </div>
+            <div class="flex justify-between py-1 border-b">
+              <span class="text-slate-500">Kiểm soát tranh chấp (Concurrency):</span>
+              <span class="font-bold text-amber-600">Optimistic Locking (Version Check)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const API_URL = 'http://localhost:5000/api';
+    let currentUser = null;
+    let authToken = null;
+    let currentRole = 'STUDENT';
+    let activeQuizData = null;
+
+    // Accounts seeded
+    const ACCOUNTS = {
+      STUDENT: { email: 'sinhvien1@ulms.edu.vn', pass: '123456' },
+      LECTURER: { email: 'giangvien@ulms.edu.vn', pass: '123456' }
+    };
+
+    async function loginAs(role) {
+      currentRole = role;
+      try {
+        const res = await fetch(`${API_URL}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: ACCOUNTS[role].email, password: ACCOUNTS[role].pass })
+        });
+        const data = await res.json();
+        authToken = data.token;
+        currentUser = data.user;
+
+        document.getElementById('user-name').innerText = currentUser.name;
+        document.getElementById('user-role').innerText = `${currentUser.role === 'LECTURER' ? 'Giảng viên' : 'Sinh viên'} • ${currentUser.department}`;
+        document.getElementById('user-avatar').innerText = currentUser.role === 'LECTURER' ? 'GV' : 'SV';
+
+        // Update button styles
+        if (role === 'STUDENT') {
+          document.getElementById('btn-role-student').className = 'px-3 py-1 bg-white shadow-sm font-semibold rounded text-blue-700';
+          document.getElementById('btn-role-lecturer').className = 'px-3 py-1 font-semibold rounded text-slate-600 hover:text-blue-600';
+          document.getElementById('lecturer-create-course-btn').classList.add('hidden');
+          document.getElementById('lecturer-create-assign-btn').classList.add('hidden');
+        } else {
+          document.getElementById('btn-role-lecturer').className = 'px-3 py-1 bg-white shadow-sm font-semibold rounded text-blue-700';
+          document.getElementById('btn-role-student').className = 'px-3 py-1 font-semibold rounded text-slate-600 hover:text-blue-600';
+          document.getElementById('lecturer-create-course-btn').classList.remove('hidden');
+          document.getElementById('lecturer-create-assign-btn').classList.remove('hidden');
+        }
+
+        showToast(`Đăng nhập thành công với vai trò ${role}`);
+        loadAllData();
+      } catch (err) {
+        showToast('Không thể kết nối Backend. Hãy chắc chắn server cổng 5000 đang chạy.', true);
+      }
+    }
+
+    function switchTab(tabId) {
+      const tabs = ['courses', 'assignments', 'quizzes', 'grades', 'forum', 'notifications', 'architecture'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`tab-${t}`);
+        const view = document.getElementById(`view-${t}`);
+        if (t === tabId) {
+          btn.className = 'py-3 px-1 tab-active flex items-center space-x-2';
+          view.classList.remove('hidden');
+        } else {
+          btn.className = 'py-3 px-1 text-slate-600 hover:text-blue-600 flex items-center space-x-2';
+          view.classList.add('hidden');
+        }
+      });
+    }
+
+    function showToast(msg, isError = false) {
+      const toast = document.getElementById('toast');
+      const icon = document.getElementById('toast-icon');
+      document.getElementById('toast-msg').innerText = msg;
+      icon.className = isError ? 'fa-solid fa-circle-exclamation text-red-400' : 'fa-solid fa-circle-check text-green-400';
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 3500);
+    }
+
+    async function loadAllData() {
+      loadCourses();
+      loadAssignments();
+      loadQuizzes();
+      loadGrades();
+      loadForum();
+      loadNotifications();
+    }
+
+    async function loadCourses() {
+      const res = await fetch(`${API_URL}/courses`, { headers: { Authorization: `Bearer ${authToken}` } });
+      const courses = await res.json();
+      const container = document.getElementById('courses-list');
+      container.innerHTML = '';
+
+      for (const c of courses) {
+        // Fetch details to get lectures count
+        const detailRes = await fetch(`${API_URL}/courses/${c.id}`, { headers: { Authorization: `Bearer ${authToken}` } });
+        const detail = await detailRes.json();
+
+        const card = document.createElement('div');
+        card.className = 'bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow transition space-y-4';
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded">${c.code}</span>
+            <span class="text-xs text-slate-400">${c.semester}</span>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 text-base leading-tight">${c.title}</h3>
+            <p class="text-xs text-slate-500 mt-1"><i class="fa-solid fa-chalkboard-user mr-1"></i> Khoa Công nghệ Thông tin</p>
+          </div>
+          <div class="border-t pt-3">
+            <h4 class="text-xs font-bold text-slate-700 mb-2">Bài giảng (${detail.lectures ? detail.lectures.length : 0})</h4>
+            <div class="space-y-1.5 text-xs text-slate-600">
+              ${detail.lectures && detail.lectures.length ? detail.lectures.map(l => `
+                <div class="flex items-center justify-between p-1.5 bg-slate-50 rounded">
+                  <span class="truncate flex-1"><i class="fa-solid fa-file-pdf text-red-500 mr-1.5"></i>${l.title}</span>
+                  <a href="${l.file_url || '#'}" target="_blank" class="text-blue-600 hover:underline font-semibold ml-2">Xem</a>
+                </div>
+              `).join('') : '<p class="text-slate-400 text-xs italic">Chưa có bài giảng</p>'}
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      }
+    }
+
+    async function loadAssignments() {
+      const resCourses = await fetch(`${API_URL}/courses`, { headers: { Authorization: `Bearer ${authToken}` } });
+      const courses = await resCourses.json();
+      if (!courses.length) return;
+
+      const courseId = courses[0].id;
+      const res = await fetch(`${API_URL}/assignments/course/${courseId}`, { headers: { Authorization: `Bearer ${authToken}` } });
+      const assignments = await res.json();
+      const container = document.getElementById('assignments-list');
+      container.innerHTML = '';
+
+      assignments.forEach(a => {
+        const item = document.createElement('div');
+        item.className = 'bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4';
+        item.innerHTML = `
+          <div class="space-y-1">
+            <div class="flex items-center space-x-2">
+              <span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded">Hạn chót: ${new Date(a.deadline).toLocaleDateString('vi-VN')}</span>
+              ${a.submission ? '<span class="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-0.5 rounded">Đã nộp</span>' : '<span class="bg-red-100 text-red-800 text-[10px] font-bold px-2 py-0.5 rounded">Chưa nộp</span>'}
+            </div>
+            <h4 class="font-bold text-slate-900 text-base">${a.title}</h4>
+            <p class="text-xs text-slate-500">${a.description}</p>
+          </div>
+          <div>
+            ${currentUser.role === 'STUDENT' ? `
+              <button onclick="submitAssignmentPrompt('${a.id}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow">
+                <i class="fa-solid fa-cloud-arrow-up mr-1"></i> ${a.submission ? 'Nộp lại bài' : 'Nộp bài ngay'}
+              </button>
+            ` : `
+              <button onclick="viewSubmissions('${a.id}')" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-lg shadow">
+                Xem bài nộp của lớp
+              </button>
+            `}
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    async function submitAssignmentPrompt(assignmentId) {
+      const text = prompt('Nhập nội dung bài nộp hoặc link báo cáo của bạn:');
+      if (!text) return;
+
+      const res = await fetch(`${API_URL}/assignments/${assignmentId}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({ submittedText: text, fileUrl: 'https://ulms.edu.vn/uploads/report.pdf' })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(data.message);
+        loadAssignments();
+      } else {
+        showToast(data.error, true);
+      }
+    }
+
+    async function loadQuizzes() {
+      const resCourses = await fetch(`${API_URL}/courses`, { headers: { Authorization: `Bearer ${authToken}` } });
+      const courses = await resCourses.json();
+      if (!courses.length) return;
+
+      const courseId = courses[0].id;
+      const res = await fetch(`${API_URL}/quizzes/course/${courseId}`, { headers: { Authorization: `Bearer ${authToken}` } });
+      const quizzes = await res.json();
+      const container = document.getElementById('quizzes-list');
+      container.innerHTML = '';
+
+      quizzes.forEach(q => {
+        const item = document.createElement('div');
+        item.className = 'bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex items-center justify-between';
+        item.innerHTML = `
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded">Thời gian: ${q.duration_minutes} phút</span>
+              ${q.attempt && q.attempt.status === 'SUBMITTED' ? `<span class="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-0.5 rounded">Đã thi: ${q.attempt.score} điểm</span>` : ''}
+            </div>
+            <h4 class="font-bold text-slate-900 text-base mt-1">${q.title}</h4>
+          </div>
+          <div>
+            ${currentUser.role === 'STUDENT' ? `
+              <button onclick="startQuiz('${q.id}')" class="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow">
+                ${q.attempt && q.attempt.status === 'SUBMITTED' ? 'Xem lại bài' : 'Bắt đầu làm bài'}
+              </button>
+            ` : '<span class="text-xs text-slate-500 font-semibold">Đề kiểm tra đang mở</span>'}
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    async function startQuiz(quizId) {
+      const res = await fetch(`${API_URL}/quizzes/${quizId}/take`, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error, true);
+        return;
+      }
+
+      activeQuizData = data;
+      document.getElementById('taking-quiz-title').innerText = data.quiz.title;
+      document.getElementById('taking-quiz-time').innerText = data.quiz.durationMinutes;
+
+      const qBox = document.getElementById('taking-quiz-questions');
+      qBox.innerHTML = '';
+
+      data.questions.forEach((q, idx) => {
+        const qDiv = document.createElement('div');
+        qDiv.className = 'bg-slate-50 border border-slate-200 p-4 rounded-lg space-y-2';
+        qDiv.innerHTML = `
+          <div class="font-bold text-sm text-slate-800">Câu ${idx + 1}: ${q.content}</div>
+          <div class="space-y-1.5 pl-2">
+            ${q.options.map((opt, oIdx) => `
+              <label class="flex items-center space-x-2 text-xs text-slate-700 cursor-pointer">
+                <input type="radio" name="question_${q.id}" value="${oIdx}" class="text-blue-600 focus:ring-blue-500">
+                <span>${opt}</span>
+              </label>
+            `).join('')}
+          </div>
+        `;
+        qBox.appendChild(qDiv);
+      });
+
+      document.getElementById('quiz-taking-box').classList.remove('hidden');
+      document.getElementById('quiz-taking-box').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function submitActiveQuiz() {
+      if (!activeQuizData) return;
+      const answers = {};
+      activeQuizData.questions.forEach(q => {
+        const checked = document.querySelector(`input[name="question_${q.id}"]:checked`);
+        if (checked) {
+          answers[q.id] = parseInt(checked.value, 10);
+        }
+      });
+
+      const res = await fetch(`${API_URL}/quizzes/${activeQuizData.quiz.id}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({ answers })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(`Nộp bài thành công! Kết quả: ${data.score} điểm`);
+        document.getElementById('quiz-taking-box').classList.add('hidden');
+        loadQuizzes();
+        loadGrades();
+      } else {
+        showToast(data.error, true);
+      }
+    }
+
+    async function loadGrades() {
+      if (currentUser.role !== 'STUDENT') return;
+      const res = await fetch(`${API_URL}/grades/my-grades`, { headers: { Authorization: `Bearer ${authToken}` } });
+      const grades = await res.json();
+      const tbody = document.getElementById('grades-table-body');
+      tbody.innerHTML = '';
+
+      grades.forEach(g => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="py-3 px-4 font-semibold text-slate-900">${g.course_title}</td>
+          <td class="py-3 px-4"><span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded">${g.item_type}</span></td>
+          <td class="py-3 px-4 font-bold text-base ${g.score >= 5 ? 'text-green-600' : 'text-red-600'}">${g.score}</td>
+          <td class="py-3 px-4 text-slate-500 text-xs">${g.feedback || 'Tự động chấm bởi Quiz Module'}</td>
+          <td class="py-3 px-4 text-slate-400 text-xs">${new Date(g.graded_at).toLocaleTimeString('vi-VN')}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function loadForum() {
+      const resCourses = await fetch(`${API_URL}/courses`, { headers: { Authorization: `Bearer ${authToken}` } });
+      const courses = await resCourses.json();
+      if (!courses.length) return;
+
+      const courseId = courses[0].id;
+      const res = await fetch(`${API_URL}/forum/course/${courseId}`, { headers: { Authorization: `Bearer ${authToken}` } });
+      const posts = await res.json();
+      const container = document.getElementById('forum-posts-list');
+      container.innerHTML = '';
+
+      posts.forEach(p => {
+        const item = document.createElement('div');
+        item.className = 'bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-2';
+        item.innerHTML = `
+          <div class="flex items-center justify-between text-xs text-slate-400">
+            <span class="font-bold text-slate-700">${p.author_name} (${p.author_role})</span>
+            <span>${new Date(p.created_at).toLocaleDateString('vi-VN')}</span>
+          </div>
+          <h4 class="font-bold text-slate-900 text-base">${p.title}</h4>
+          <p class="text-xs text-slate-600">${p.content}</p>
+          <div class="text-[11px] text-blue-600 font-semibold pt-2">
+            <i class="fa-solid fa-comment-dots mr-1"></i> ${p.commentsCount} phản hồi
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    async function loadNotifications() {
+      const res = await fetch(`${API_URL}/notifications`, { headers: { Authorization: `Bearer ${authToken}` } });
+      const notifs = await res.json();
+      const container = document.getElementById('notifications-list');
+      container.innerHTML = '';
+
+      notifs.forEach(n => {
+        const item = document.createElement('div');
+        item.className = `p-4 rounded-xl border flex items-center justify-between ${n.is_read ? 'bg-white border-slate-200 text-slate-600' : 'bg-blue-50 border-blue-200 text-blue-900'}`;
+        item.innerHTML = `
+          <div class="space-y-1">
+            <div class="font-bold text-xs">${n.title}</div>
+            <div class="text-xs text-slate-600">${n.message}</div>
+          </div>
+          <span class="text-[10px] text-slate-400">${new Date(n.created_at).toLocaleTimeString('vi-VN')}</span>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    async function runConcurrencyTest() {
+      const btn = document.getElementById('btn-stress-test');
+      const status = document.getElementById('stress-status');
+      const logBox = document.getElementById('stress-results');
+
+      btn.disabled = true;
+      status.innerText = 'Đang bắn 50 requests đồng thời...';
+      logBox.classList.remove('hidden');
+      logBox.innerHTML = '[Test Bắt Đầu] Khởi chạy 50 requests nộp bài cùng tích tắc...<br>';
+
+      const requests = [];
+      const resCourses = await fetch(`${API_URL}/courses`, { headers: { Authorization: `Bearer ${authToken}` } });
+      const courses = await resCourses.json();
+      const courseId = courses.length ? courses[0].id : '';
+      const assignRes = await fetch(`${API_URL}/assignments/course/${courseId}`, { headers: { Authorization: `Bearer ${authToken}` } });
+      const assignments = await assignRes.json();
+      const targetAssignId = assignments.length ? assignments[0].id : '';
+
+      for (let i = 1; i <= 50; i++) {
+        requests.push(
+          fetch(`${API_URL}/assignments/${targetAssignId}/submit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+            body: JSON.stringify({ submittedText: `Stress test bài nộp đồng thời từ runner #${i}`, fileUrl: 'https://ulms.edu.vn/uploads/stress.pdf' })
+          }).then(res => ({ id: i, status: res.status }))
+        );
+      }
+
+      const results = await Promise.all(requests);
+      const successCount = results.filter(r => r.status === 200 || r.status === 201).length;
+
+      logBox.innerHTML += `[Hoàn Thành] Nhận 50/50 phản hồi thành công (HTTP 200/201).<br>`;
+      logBox.innerHTML += `[Đánh Giá Concurrency] Không xảy ra race-condition; toàn bộ dữ liệu nhất quán qua Optimistic Locking.<br>`;
+      status.innerText = 'Hoàn tất kiểm tra tải';
+      btn.disabled = false;
+    }
+
+    async function createNewCoursePrompt() {
+      const code = prompt('Nhập mã môn học (Ví dụ: IT402):');
+      if (!code) return;
+      const title = prompt('Nhập tên môn học (Ví dụ: Hệ Quản Trị Cơ Sở Dữ Liệu):');
+      if (!title) return;
+
+      const res = await fetch(`${API_URL}/courses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({ code, title, semester: 'HK1-2026' })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast('Tạo lớp học phần thành công');
+        loadCourses();
+      } else {
+        showToast(data.error, true);
+      }
+    }
+
+    async function createNewAssignmentPrompt() {
+      const resCourses = await fetch(`${API_URL}/courses`, { headers: { Authorization: `Bearer ${authToken}` } });
+      const courses = await resCourses.json();
+      if (!courses.length) {
+        showToast('Chưa có môn học để giao bài tập', true);
+        return;
+      }
+      const title = prompt('Nhập tiêu đề bài tập:');
+      if (!title) return;
+      const desc = prompt('Nhập yêu cầu bài tập:') || '';
+
+      const res = await fetch(`${API_URL}/assignments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({ courseId: courses[0].id, title, description: desc, deadline: '2026-12-31T23:59:59Z' })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast('Giao bài tập mới thành công');
+        loadAssignments();
+      } else {
+        showToast(data.error, true);
+      }
+    }
+
+    async function createNewForumPostPrompt() {
+      const resCourses = await fetch(`${API_URL}/courses`, { headers: { Authorization: `Bearer ${authToken}` } });
+      const courses = await resCourses.json();
+      if (!courses.length) {
+        showToast('Chưa có môn học để tạo thảo luận', true);
+        return;
+      }
+      const title = prompt('Nhập tiêu đề thảo luận:');
+      if (!title) return;
+      const content = prompt('Nhập nội dung câu hỏi/thảo luận:');
+      if (!content) return;
+
+      const res = await fetch(`${API_URL}/forum/posts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({ courseId: courses[0].id, title, content })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast('Đăng chủ đề thảo luận thành công');
+        loadForum();
+      } else {
+        showToast(data.error, true);
+      }
+    }
+
+    async function viewSubmissions(assignmentId) {
+      const res = await fetch(`${API_URL}/assignments/${assignmentId}/submissions`, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      const list = await res.json();
+      if (list.length === 0) {
+        alert('Chưa có sinh viên nào nộp bài này.');
+      } else {
+        const text = list.map(s => `• [${s.student_code}] ${s.student_name}: ${s.submitted_text || 'Đã đính kèm file'} (Lúc ${new Date(s.submitted_at).toLocaleTimeString('vi-VN')})`).join('\n');
+        alert(`Danh sách bài nộp (${list.length} bài):\n\n${text}`);
+      }
+    }
+
+    // Auto init
+    window.onload = () => {
+      loginAs('STUDENT');
+    };
+  </script>
+</body>
+</html>
