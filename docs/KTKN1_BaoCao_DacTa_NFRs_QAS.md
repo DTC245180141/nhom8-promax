@@ -1,4 +1,4 @@
-# BÁO CÁO ĐẶC TẢ YÊU CẦU KIẾN TRÚC PHẦN MỀM
+npx cap add android# BÁO CÁO ĐẶC TẢ YÊU CẦU KIẾN TRÚC PHẦN MỀM
 
 **Đề tài:** Hệ thống Quản lý Học tập (LMS) cho Trường Đại học  
 **Học phần:** Kiến trúc phần mềm  
